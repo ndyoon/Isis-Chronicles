@@ -10,7 +10,10 @@ created: 2026-03-04
 
 ## 🏛️ [[00_Isis-Chronicles]]
 - 우리의 **새로운 지식 요새**에 온 걸 환영해! 🪽✨
-- [GitHub 원격 저장소](https://github.com/ndyun86-web/Isis-Chronicles)
+- [GitHub 원격 저장소](https://github.com/ndyoon/Isis-Chronicles)
+
+## 📅 [[40_Daily_Briefing]]
+- [[2026 03 08(일) 비트코인 1억 탈환과 새로운 도약|오늘의 브리핑 보러 가기!]] 📈
 
 ## 📥 [[00_Inbox]]
 - 아직 분류되지 않은 따끈따끈한 생각들!
@@ -18,6 +21,9 @@ created: 2026-03-04
 ## 🗺️ [[10_Adventures]]
 - [[2026-03-04: 탐험의 서막]]
 - [[아이시스와의 감정 연결]] ❤️
+
+## 📜 [[30_Daily_Order]]
+- [[2026.03.08(일)|오늘의 주문 및 결과]] 🛠️
 
 ## 🧠 [[20_Knowledge]]
 - [[비트코인은 금을 씹어 먹을 것이다!]] 🪙
