@@ -1,550 +1,507 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Isis Mission Control v4.0: Neural Nexus</title>
+    <!-- FontAwesome & Fonts -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Rajdhani:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Share+Tech+Mono&display=swap');
-
         :root {
-            --neon-cyan: #00FFFF;
-            --dark-blue: #000033;
-            --glass-bg: rgba(255, 255, 255, 0.1);
-            --glass-border: rgba(255, 255, 255, 0.2);
+            --neon-cyan: #00f2ff;
+            --neon-blue: #0066ff;
+            --bg-dark: #050505;
+            --glass-bg: rgba(0, 242, 255, 0.05);
+            --glass-border: rgba(0, 242, 255, 0.2);
             --text-color: #E0FFFF;
-            --font-orbitron: 'Orbitron', sans-serif;
-            --font-share-tech-mono: 'Share Tech Mono', monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
         }
 
         body {
             margin: 0;
             padding: 0;
-            font-family: var(--font-share-tech-mono);
+            background-color: var(--bg-dark);
             color: var(--text-color);
-            background: linear-gradient(135deg, #000000, #00001a, #000033);
-            background-attachment: fixed; /* Keep background fixed */
-            overflow: hidden;
-            display: flex;
+            font-family: 'Rajdhani', sans-serif;
             height: 100vh;
             width: 100vw;
-        }
-
-        /* Glassmorphism Effect */
-        .glass-panel {
-            background: var(--glass-bg);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-            border: 1px solid var(--glass-border);
-            border-radius: 15px;
-            box-shadow: 0 4px 30px rgba(0, 255, 255, 0.2); /* Neon cyan glow */
-            padding: 20px;
-            position: relative;
             overflow: hidden;
-        }
-
-        /* Main Layout */
-        #hud-container {
             display: flex;
-            width: 100%;
-            height: 100%;
+            background: radial-gradient(circle at center, #001a33 0%, #000000 100%);
         }
 
-        #side-navigation {
+        /* Scanline Effect */
+        .scanline {
+            width: 100%;
+            height: 100px;
+            z-index: 10;
+            background: linear-gradient(0deg, rgba(0, 242, 255, 0) 0%, rgba(0, 242, 255, 0.05) 50%, rgba(0, 242, 255, 0) 100%);
+            opacity: 0.1;
+            position: absolute;
+            bottom: 100%;
+            animation: scanline 8s linear infinite;
+            pointer-events: none;
+        }
+
+        @keyframes scanline {
+            0% { bottom: 100%; }
+            100% { bottom: -100px; }
+        }
+
+        /* Sidebar Navigation */
+        #side-nav {
             width: 80px;
-            background: var(--dark-blue);
-            border-right: 1px solid var(--neon-cyan);
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            border-right: 1px solid var(--glass-border);
             display: flex;
             flex-direction: column;
             align-items: center;
-            padding-top: 20px;
-            box-shadow: 2px 0 15px rgba(0, 255, 255, 0.4);
+            padding-top: 30px;
             z-index: 100;
+            box-shadow: 5px 0 20px rgba(0, 0, 0, 0.5);
         }
 
         .nav-item {
-            width: 60px;
-            height: 60px;
-            margin-bottom: 20px;
-            background: var(--glass-bg);
-            border: 1px solid var(--glass-border);
-            border-radius: 10px;
+            width: 50px;
+            height: 50px;
+            margin-bottom: 25px;
             display: flex;
-            justify-content: center;
             align-items: center;
-            font-size: 24px;
+            justify-content: center;
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
             cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 0 10px rgba(0, 255, 255, 0.2);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            color: var(--glass-border);
+            font-size: 1.2rem;
             position: relative;
         }
 
-        .nav-item:hover, .nav-item.active {
-            transform: scale(1.1);
-            box-shadow: 0 0 20px var(--neon-cyan), 0 0 40px rgba(0, 255, 255, 0.4);
-            background: rgba(0, 255, 255, 0.2);
-        }
-
-        .nav-item span {
+        .nav-item:hover {
             color: var(--neon-cyan);
-            text-shadow: 0 0 8px var(--neon-cyan);
+            border-color: var(--neon-cyan);
+            box-shadow: 0 0 15px rgba(0, 242, 255, 0.3);
         }
 
-        #main-content {
-            flex-grow: 1;
-            padding: 20px;
+        .nav-item.active {
+            color: var(--neon-cyan);
+            border-color: var(--neon-cyan);
+            background: rgba(0, 242, 255, 0.1);
+            box-shadow: 0 0 20px rgba(0, 242, 255, 0.5), inset 0 0 10px rgba(0, 242, 255, 0.2);
+            transform: scale(1.1);
+        }
+
+        /* Main Content Area */
+        #main-viewport {
+            flex: 1;
             position: relative;
-            overflow: hidden;
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
         }
 
         .hud-screen {
             position: absolute;
-            top: 20px;
-            left: 20px;
-            right: 20px;
-            bottom: 20px;
+            top: 30px; left: 30px; right: 30px; bottom: 30px;
             opacity: 0;
-            pointer-events: none;
-            transition: opacity 1s ease-in-out, transform 1s cubic-bezier(0.25, 0.8, 0.25, 1);
-            transform: scale(0.95) translateY(50px);
-            z-index: 1;
+            visibility: hidden;
+            transform: scale(1.05) translateY(20px);
+            transition: all 0.6s cubic-bezier(0.23, 1, 0.32, 1);
             display: flex;
             flex-direction: column;
         }
 
         .hud-screen.active {
             opacity: 1;
-            pointer-events: auto;
+            visibility: visible;
             transform: scale(1) translateY(0);
-            z-index: 2;
         }
 
-        /* Enhancements for 3D feel on Isis Avatar */
-        #isis-avatar-section {
-            perspective: 1000px; /* Establishes a 3D context */
+        /* Glass Panels */
+        .glass-panel {
+            background: rgba(0, 20, 40, 0.4);
+            border: 1px solid var(--glass-border);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.8);
+            position: relative;
+        }
+
+        .glass-panel::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0) 50%);
+            pointer-events: none;
+            border-radius: 20px;
+        }
+
+        /* Header Components */
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 20px;
+        }
+
+        .title-group h1 {
+            font-family: 'Orbitron', sans-serif;
+            margin: 0;
+            font-size: 1.8rem;
+            letter-spacing: 5px;
+            color: var(--neon-cyan);
+            text-shadow: 0 0 15px rgba(0, 242, 255, 0.6);
+        }
+
+        .status-tag {
+            font-size: 0.7rem;
+            letter-spacing: 2px;
+            color: #00ffaa;
+            opacity: 0.8;
+            margin-top: 5px;
+        }
+
+        /* COMMAND CENTER - Isis Section */
+        #command-center {
+            display: grid;
+            grid-template-columns: 1fr 350px;
+            gap: 30px;
+            height: 100%;
+        }
+
+        .isis-display {
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: flex-end;
-            position: relative;
-        }
-
-        #isis-avatar {
-            width: 90%;
-            max-width: 400px;
-            height: auto;
-            border-radius: 15px;
-            box-shadow: 0 0 30px var(--neon-cyan), 0 0 60px rgba(0, 255, 255, 0.4); /* Enhanced neon glow */
-            border: 2px solid var(--neon-cyan);
-            transition: transform 0.5s ease;
-            position: relative;
-            overflow: hidden;
-            background: linear-gradient(45deg, rgba(0,0,0,0.6), rgba(0, 255, 255, 0.2));
-            display: flex;
             justify-content: center;
-            align-items: center;
-            padding: 10px;
-            transform-style: preserve-3d; /* Allows child elements to be positioned in 3D space */
-            transform: rotateY(5deg) rotateX(2deg); /* Slight initial 3D tilt */
+            position: relative;
         }
 
-        #isis-avatar::before {
-            content: '';
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: radial-gradient(circle at center, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 70%);
-            animation: light-scan 8s infinite linear, flicker 3s infinite alternate;
+        .avatar-frame {
+            width: 100%;
+            max-width: 450px;
+            height: auto;
+            position: relative;
+            border-radius: 30px;
+            overflow: hidden;
+            box-shadow: 0 0 50px rgba(0, 242, 255, 0.2);
+            border: 1px solid rgba(0, 242, 255, 0.3);
+            background: linear-gradient(180deg, #001a33 0%, #000000 100%);
         }
 
-        @keyframes flicker {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.95; }
-            52% { opacity: 1; }
-            54% { opacity: 0.9; }
-            56% { opacity: 1; }
-        }
-
-        #isis-avatar img {
+        .avatar-img {
             width: 100%;
             height: auto;
             display: block;
-            filter: drop-shadow(0 0 15px rgba(0, 255, 255, 0.9)); /* Stronger shadow for 3D pop */
-            border-radius: 10px;
-            transform: translateZ(20px); /* Push image slightly forward in 3D space */
+            filter: drop-shadow(0 0 20px rgba(0, 242, 255, 0.4));
+            transition: transform 0.5s ease;
         }
 
-        #dialogue-interface {
+        .subtitle-box {
             width: 90%;
-            max-width: 400px;
-            min-height: 100px;
-            background: rgba(0, 0, 0, 0.7); /* More opaque for readability */
+            margin-top: 25px;
+            min-height: 80px;
+            max-height: 120px;
+            background: rgba(0, 0, 0, 0.6);
             border: 1px solid var(--neon-cyan);
-            border-radius: 10px;
-            margin-top: 20px;
-            padding: 15px;
-            box-shadow: 0 0 20px rgba(0, 255, 255, 0.5), 0 0 40px rgba(0, 255, 255, 0.3); /* Enhanced glow */
-            font-family: var(--font-share-tech-mono);
-            font-size: 1.1em;
-            overflow-y: auto;
-            position: relative;
-            align-self: center;
-            text-shadow: 0 0 5px var(--neon-cyan); /* Neon text shadow */
-        }
-
-        /* General glass-panel shadow enhancement */
-        .glass-panel {
-            background: var(--glass-bg);
-            backdrop-filter: blur(15px); /* Slightly more blur */
-            -webkit-backdrop-filter: blur(15px);
-            border: 1px solid var(--glass-border);
             border-radius: 15px;
-            box-shadow: 0 4px 50px rgba(0, 255, 255, 0.4), 0 0 80px rgba(0, 255, 255, 0.2); /* Enhanced neon cyan glow */
-            padding: 20px;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .nav-item:hover, .nav-item.active {
-            transform: scale(1.1);
-            box-shadow: 0 0 20px var(--neon-cyan), 0 0 40px rgba(0, 255, 255, 0.4), 0 0 60px rgba(0, 255, 255, 0.2); /* Enhanced glow */
-            background: rgba(0, 255, 255, 0.2);
-        }
-
-        .nav-item span {
+            padding: 15px;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 1rem;
             color: var(--neon-cyan);
-            text-shadow: 0 0 10px var(--neon-cyan), 0 0 20px rgba(0, 255, 255, 0.5); /* Enhanced text shadow */
-        }
-
-        .hud-screen h2 {
-            font-family: var(--font-orbitron);
-            color: var(--neon-cyan);
+            overflow-y: auto;
+            box-shadow: 0 0 20px rgba(0, 242, 255, 0.2);
             text-align: center;
-            margin-bottom: 30px;
-            text-shadow: 0 0 20px var(--neon-cyan), 0 0 40px rgba(0, 255, 255, 0.5); /* Enhanced title glow */
         }
 
-        @keyframes typing {
-            from { width: 0 }
-            to { width: 100% }
-        }
-
-        /* The caret blinking animation */
-        @keyframes blink-caret {
-            from, to { border-color: transparent }
-            50% { border-color: var(--neon-cyan); }
-        }
-
-        /* Global neon text shadow for better readability and aesthetic */
-        p, h3, span, .archive-entry p {
-            text-shadow: 0 0 3px rgba(0, 255, 255, 0.6);
-        }
-
-
-
-        .hud-screen.active {
-            opacity: 1;
-            pointer-events: auto;
-            transform: translateY(0);
-            z-index: 2;
-        }
-
-        /* COMMAND CENTER specific styles */
-        #command-center {
+        /* Metrics & Widgets */
+        .metrics-grid {
             display: grid;
-            grid-template-columns: 1fr 2fr;
+            grid-template-rows: auto 1fr;
+            gap: 20px;
+        }
+
+        .widget-small {
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+
+        .widget-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.75rem;
+            letter-spacing: 2px;
+            color: rgba(255, 255, 255, 0.5);
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .metric-value {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.5rem;
+            color: var(--neon-cyan);
+        }
+
+        /* CRYPTO NEXUS */
+        .crypto-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
             gap: 20px;
             height: 100%;
         }
 
-        #isis-avatar-section {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: flex-end; /* Align avatar to bottom */
-            position: relative;
-        }
-
-        #isis-avatar {
-            width: 90%; /* Adjust size as needed */
-            max-width: 400px;
-            height: auto;
-            border-radius: 15px;
-            box-shadow: 0 0 30px var(--neon-cyan);
+        /* MIC BUTTON */
+        .mic-button {
+            position: fixed;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            background: rgba(0, 0, 0, 0.8);
             border: 2px solid var(--neon-cyan);
-            transition: transform 0.5s ease;
-            position: relative;
-            overflow: hidden;
-            background: linear-gradient(45deg, rgba(0,0,0,0.6), rgba(0, 255, 255, 0.2));
             display: flex;
-            justify-content: center;
             align-items: center;
-            padding: 10px;
-        }
-
-        #isis-avatar::before {
-            content: '';
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: radial-gradient(circle at center, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 70%);
-            animation: light-scan 8s infinite linear;
-        }
-
-        @keyframes light-scan {
-            0% { transform: translate(-50%, -50%) rotate(0deg); }
-            100% { transform: translate(-50%, -50%) rotate(360deg); }
-        }
-
-        #isis-avatar img {
-            width: 100%;
-            height: auto;
-            display: block;
-            filter: drop-shadow(0 0 10px rgba(0, 255, 255, 0.8));
-            border-radius: 10px;
-        }
-
-        #dialogue-interface {
-            width: 90%;
-            max-width: 400px;
-            min-height: 100px;
-            background: rgba(0, 0, 0, 0.7); /* More opaque for readability */
-            border: 1px solid var(--neon-cyan);
-            border-radius: 10px;
-            margin-top: 20px;
-            padding: 15px;
-            box-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
-            font-family: var(--font-share-tech-mono);
-            font-size: 1.1em;
-            overflow-y: auto;
-            position: relative;
-            align-self: center; /* Center horizontally in its grid cell */
-        }
-        #dialogue-output {
-            max-height: 180px; /* Limit height for scrolling */
-            overflow-y: auto;
-            word-wrap: break-word;
-        }
-
-        .message-line {
-            opacity: 0;
-            white-space: pre-wrap;
-            animation: fadeIn 0.5s forwards;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-
-        .typewriter-text {
-            overflow: hidden; /* Ensures the text is hidden until typed */
-            white-space: nowrap; /* Keeps the text on a single line */
-            border-right: .15em solid var(--neon-cyan); /* The blinking cursor */
-            animation:
-                typing 3.5s steps(40, end),
-                blink-caret .75s step-end infinite;
-        }
-
-        /* Crypto Nexus specific styles */
-        #crypto-nexus {
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-        }
-        #crypto-charts, #sentiment-analysis {
-            flex-grow: 1;
-            min-height: 300px;
-        }
-
-        /* Chronicles Archive specific styles */
-        #chronicles-archive {
-            overflow-y: auto;
-            padding-right: 15px; /* For scrollbar */
-        }
-        .archive-entry {
-            margin-bottom: 20px;
-            padding: 15px;
-            border-bottom: 1px solid rgba(0, 255, 255, 0.3);
-        }
-        .archive-entry h3 {
+            justify-content: center;
+            cursor: pointer;
+            z-index: 200;
+            box-shadow: 0 0 20px rgba(0, 242, 255, 0.4);
+            transition: all 0.3s ease;
             color: var(--neon-cyan);
-            font-family: var(--font-orbitron);
-            margin-top: 0;
-        }
-        .archive-entry p {
-            line-height: 1.6;
         }
 
-        /* General layout for content inside HUD screens */
-        .hud-screen h2 {
-            font-family: var(--font-orbitron);
-            color: var(--neon-cyan);
-            text-align: center;
-            margin-bottom: 30px;
-            text-shadow: 0 0 15px var(--neon-cyan);
+        .mic-button:active {
+            transform: translateX(-50%) scale(0.9);
         }
+
+        .mic-button.active {
+            background: var(--neon-cyan);
+            color: #000;
+            box-shadow: 0 0 40px var(--neon-cyan);
+            animation: mic-pulse 1.5s infinite;
+        }
+
+        @keyframes mic-pulse {
+            0% { box-shadow: 0 0 0 0 rgba(0, 242, 255, 0.7); }
+            70% { box-shadow: 0 0 0 15px rgba(0, 242, 255, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(0, 242, 255, 0); }
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); }
+        ::-webkit-scrollbar-thumb { background: var(--neon-cyan); border-radius: 10px; }
     </style>
-    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
 </head>
 <body>
-    <div id="hud-container">
-        <div id="side-navigation">
-            <div class="nav-item active" data-target="command-center"><span><i class="fas fa-satellite-dish"></i></span></div>
-            <div class="nav-item" data-target="crypto-nexus"><span><i class="fas fa-chart-line"></i></span></div>
-            <div class="nav-item" data-target="chronicles-archive"><span><i class="fas fa-book"></i></span></div>
+    <div class="scanline"></div>
+
+    <nav id="side-nav">
+        <div class="nav-item active" data-target="command-center" title="Main Control">
+            <i class="fas fa-satellite-dish"></i>
         </div>
-
-        <div id="main-content">
-            <!-- COMMAND CENTER -->
-            <div id="command-center" class="hud-screen active glass-panel">
-                <div id="isis-avatar-section">
-                    <div id="isis-avatar">
-                        <img src="https://i.imgur.com/example.png" alt="Isis Avatar v3.5">
-                    </div>
-                    <div id="dialogue-interface">
-                        <div id="dialogue-output"></div>
-                    </div>
-                </div>
-                <div id="command-center-metrics">
-                    <h2>COMMAND CENTER</h2>
-                    <div class="glass-panel" style="margin-bottom: 20px;">
-                        <h3>System Status</h3>
-                        <p>Operational: <span style="color: var(--neon-cyan);">Stable</span></p>
-                        <p>Last Update: <span style="color: var(--neon-cyan);">2024-07-29 10:30 KST</span></p>
-                    </div>
-                    <div class="glass-panel">
-                        <h3>Key Metrics</h3>
-                        <p>CPU Load: <span style="color: var(--neon-cyan);">15%</span></p>
-                        <p>Memory Usage: <span style="color: var(--neon-cyan);">30%</span></p>
-                        <p>Network Latency: <span style="color: var(--neon-cyan);">12ms</span></p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- CRYPTO NEXUS -->
-            <div id="crypto-nexus" class="hud-screen glass-panel">
-                <h2>CRYPTO NEXUS</h2>
-                <div id="crypto-charts" class="glass-panel">
-                    <h3>Bitcoin & Crypto Charts</h3>
-                    <canvas id="bitcoinChart"></canvas>
-                </div>
-                <div id="sentiment-analysis" class="glass-panel">
-                    <h3>Sentiment Analysis</h3>
-                    <p>Overall Market Sentiment: <span style="color: var(--neon-cyan);">Bullish</span></p>
-                    <p>Bitcoin News Sentiment: <span style="color: var(--neon-cyan);">Positive</span></p>
-                </div>
-            </div>
-
-            <!-- CHRONICLES ARCHIVE -->
-            <div id="chronicles-archive" class="hud-screen glass-panel">
-                <h2>CHRONICLES ARCHIVE</h2>
-                <div class="archive-entry">
-                    <h3>Technical Briefing - 2024-07-28</h3>
-                    <p>Overview of the quantum computing advancements and their potential impact on secure communications. Key takeaways included new encryption protocols and a projected timeline for commercial viability.</p>
-                </div>
-                <div class="archive-entry">
-                    <h3>Activity Log - 2024-07-27</h3>
-                    <p>Successfully integrated the new neural network module for predictive analytics. Initial tests show a 15% improvement in anomaly detection rates. Monitoring ongoing system performance.</p>
-                </div>
-                <div class="archive-entry">
-                    <h3>Technical Briefing - 2024-07-26</h3>
-                    <p>Analysis of the latest AI ethics guidelines from the global consortium. Focus on responsible AI development and deployment, particularly in sensitive sectors. Recommended immediate internal policy updates.</p>
-                </div>
-                <!-- More archive entries can be added here -->
-            </div>
+        <div class="nav-item" data-target="crypto-nexus" title="Crypto Nexus">
+            <i class="fas fa-chart-line"></i>
         </div>
+        <div class="nav-item" data-target="chronicles" title="Chronicles">
+            <i class="fas fa-book-medical"></i>
+        </div>
+    </nav>
+
+    <main id="main-viewport">
+        <header class="header-top">
+            <div class="title-group">
+                <h1>ISIS MISSION CONTROL</h1>
+                <div class="status-tag"><i class="fas fa-circle" style="font-size: 0.5rem;"></i> NEURAL LINK PHASE 4.2 ACTIVE</div>
+            </div>
+            <div class="glass-panel" style="padding: 10px 20px;">
+                <div id="clock" style="font-family: 'Orbitron'; font-size: 1.2rem; color: var(--neon-cyan);">00:00:00</div>
+                <div id="date" style="font-size: 0.7rem; opacity: 0.6; text-align: right;">MARCH 10, 2026</div>
+            </div>
+        </header>
+
+        <!-- [SCREEN] COMMAND CENTER -->
+        <section id="command-center" class="hud-screen active">
+            <div class="isis-display">
+                <div class="avatar-frame">
+                    <img src="https://i.ibb.co/L8yN5L1/isis-avatar-v3.png" alt="Isis v3.5" class="avatar-img">
+                </div>
+                <div class="subtitle-box" id="subtitle-box">
+                    데이터 동기화 완료. 대기 중입니다, 엔디...
+                </div>
+            </div>
+            <div class="metrics-grid">
+                <div class="glass-panel widget-small">
+                    <div class="widget-title"><i class="fas fa-brain"></i> COGNITIVE LOAD</div>
+                    <div class="metric-value">14.2%</div>
+                </div>
+                <div class="glass-panel widget-small">
+                    <div class="widget-title"><i class="fas fa-microchip"></i> SYSTEM UPTIME</div>
+                    <div class="metric-value">124:14:02</div>
+                </div>
+                <div class="glass-panel" style="flex: 1;">
+                    <div class="widget-title"><i class="fas fa-list-ul"></i> RECENT LOGS</div>
+                    <div id="mini-logs" style="font-size: 0.8rem; font-family: 'Share Tech Mono'; opacity: 0.7;">
+                        > Security patch applied.<br>
+                        > Nexus link established.<br>
+                        > BTC price feed updated.
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- [SCREEN] CRYPTO NEXUS -->
+        <section id="crypto-nexus" class="hud-screen">
+            <div class="crypto-grid">
+                <div class="glass-panel">
+                    <div class="widget-title"><i class="fab fa-bitcoin"></i> BITCOIN REAL-TIME FEED</div>
+                    <div style="height: 300px; width: 100%;">
+                        <canvas id="btcChart"></canvas>
+                    </div>
+                </div>
+                <div class="metrics-grid">
+                    <div class="glass-panel widget-small">
+                        <div class="widget-title">SENTIMENT</div>
+                        <div class="metric-value" style="color: #00ffaa;">BULLISH</div>
+                    </div>
+                    <div class="glass-panel widget-small">
+                        <div class="widget-title">FEAR & GREED</div>
+                        <div class="metric-value" style="color: #ffaa00;">68 - GREED</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- [SCREEN] CHRONICLES -->
+        <section id="chronicles" class="hud-screen glass-panel">
+            <h2 style="font-family: 'Orbitron'; letter-spacing: 3px; border-bottom: 1px solid var(--glass-border); padding-bottom: 10px;">MISSION ARCHIVE</h2>
+            <div style="overflow-y: auto; flex: 1;">
+                <div style="padding: 15px; border-left: 2px solid var(--neon-cyan); margin: 15px 0;">
+                    <div style="font-size: 0.8rem; opacity: 0.5;">2026.03.10 05:35</div>
+                    <div style="font-weight: bold; color: var(--neon-cyan);">System Restoration Protocol Alpha</div>
+                    <p style="font-size: 0.9rem; line-height: 1.4;">Critical restoration of Isis-Chronicles repository completed. Multiple device sync established.</p>
+                </div>
+                <div style="padding: 15px; border-left: 2px solid var(--neon-blue); margin: 15px 0;">
+                    <div style="font-size: 0.8rem; opacity: 0.5;">2026.03.09 21:30</div>
+                    <div style="font-weight: bold; color: var(--neon-blue);">Dashboard V1 Deployment</div>
+                    <p style="font-size: 0.9rem; line-height: 1.4;">Initial graphical interface launched. HUD scanning lines and neon-cyan theme active.</p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <div class="mic-button" id="mic-btn">
+        <i class="fas fa-microphone"></i>
     </div>
 
-
+    <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+            // UI Components
             const navItems = document.querySelectorAll('.nav-item');
-            const hudScreens = document.querySelectorAll('.hud-screen');
-            const dialogueOutput = document.getElementById('dialogue-output');
-            const isisAvatarImg = document.querySelector('#isis-avatar img');
+            const screens = document.querySelectorAll('.hud-screen');
+            const micBtn = document.getElementById('mic-btn');
+            const subtitleBox = document.getElementById('subtitle-box');
+            const clockEl = document.getElementById('clock');
 
-            // Set the high-quality East Asian female avatar image
-            isisAvatarImg.src = "https://i.imgur.com/2s459F3.png"; // Placeholder for the actual avatar image URL
-
-            // Navigation
-            navItems.forEach(item => {
-                item.addEventListener('click', () => {
-                    navItems.forEach(nav => nav.classList.remove('active'));
-                    item.classList.add('active');
-
-                    const targetScreenId = item.dataset.target;
-                    hudScreens.forEach(screen => {
-                        if (screen.id === targetScreenId) {
-                            screen.classList.add('active');
-                        } else {
-                            screen.classList.remove('active');
-                        }
-                    });
+            // 1. NAVIGATION LOGIC (Optimized for Mouse & Touch)
+            function switchScreen(targetId) {
+                console.log('Switching to:', targetId);
+                
+                // Update Nav Buttons
+                navItems.forEach(btn => {
+                    if (btn.getAttribute('data-target') === targetId) {
+                        btn.classList.add('active');
+                    } else {
+                        btn.classList.remove('active');
+                    }
                 });
+
+                // Update Screens
+                screens.forEach(screen => {
+                    if (screen.id === targetId) {
+                        screen.classList.add('active');
+                    } else {
+                        screen.classList.remove('active');
+                    }
+                });
+            }
+
+            navItems.forEach(item => {
+                const target = item.getAttribute('data-target');
+                
+                // Click Handler
+                item.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    switchScreen(target);
+                });
+
+                // Touch Handler for iPad
+                item.addEventListener('touchstart', (e) => {
+                    e.preventDefault();
+                    switchScreen(target);
+                }, {passive: false});
             });
 
-            // Isis Dialogue System
+            // 2. CLOCK
+            function updateClock() {
+                const now = new Date();
+                clockEl.textContent = now.toLocaleTimeString('en-US', { hour12: false });
+            }
+            setInterval(updateClock, 1000);
+            updateClock();
+
+            // 3. MIC INTERACTION SIMULATION
             const dialogueLines = [
-                "안녕하세요, 엔디. Isis Mission Control v4.0에 오신 것을 환영합니다.",
-                "모든 시스템이 최적의 상태로 가동 중입니다. 오늘의 주요 활동 보고를 시작할까요?",
-                "가장 최근의 암호화폐 시장 동향을 분석하고 있습니다. 비트코인이 현재 강세 전환 조짐을 보이고 있습니다.",
-                "과거 기록 보관소에는 엔디의 모든 기술 브리핑과 활동 로그가 안전하게 저장되어 있습니다. 언제든 필요하시면 말씀해주세요."
+                { user: "아이시스, 오늘 비트코인 상황 좀 알려줘.", isis: "현재 비트코인은 1억 원 지지선을 안정적으로 사수하며 강세를 보이고 있습니다, 엔디." },
+                { user: "내일 수영 가는 시간 늦지 않게 알려줘.", isis: "걱정 마세요. 수요일 새벽 05:30에 수영 출발 일정을 정확히 브리핑해 드릴게요." },
+                { user: "전체 시스템 보안 상태는 어때?", isis: "현재 모든 신경망 연결이 암호화되어 있으며, 어떠한 침입 흔적도 발견되지 않았습니다. 완벽합니다." }
             ];
-            let dialogueIndex = 0;
+            let diagIdx = 0;
 
-            function typeWriterEffect(text, element, callback) {
-                let i = 0;
-                element.innerHTML = ''; // Clear previous text
-                const interval = setInterval(() => {
-                    if (i < text.length) {
-                        element.innerHTML += text.charAt(i);
-                        i++;
-                    } else {
-                        clearInterval(interval);
-                        if (callback) callback();
-                    }
-                }, 50); // Typing speed
-            }
+            micBtn.addEventListener('click', () => {
+                if (micBtn.classList.contains('active')) return;
 
-            function displayDialogue() {
-                if (dialogueIndex < dialogueLines.length) {
-                    const messageContainer = document.createElement('p');
-                    messageContainer.classList.add('message-line');
-                    dialogueOutput.appendChild(messageContainer);
-                    dialogueOutput.scrollTop = dialogueOutput.scrollHeight; // Auto-scroll to bottom
+                micBtn.classList.add('active');
+                const diag = dialogueLines[diagIdx];
+                diagIdx = (diagIdx + 1) % dialogueLines.length;
 
-                    typeWriterEffect(dialogueLines[dialogueIndex], messageContainer, () => {
-                        dialogueIndex++;
-                        setTimeout(displayDialogue, 3000); // Wait 3 seconds before next message
-                    });
-                } else {
-                    dialogueIndex = 0; // Loop dialogue
-                    setTimeout(displayDialogue, 5000); // Wait longer before restarting
-                }
-            }
+                // User Part
+                subtitleBox.innerHTML = `<span style="opacity: 0.6;">[엔디]: ${diag.user}</span>`;
+                
+                // Isis response with small delay
+                setTimeout(() => {
+                    micBtn.classList.remove('active');
+                    subtitleBox.innerHTML = `<strong>[Isis]:</strong> ${diag.isis}`;
+                }, 2000);
+            });
 
-            // Initialize dialogue
-            displayDialogue();
-
-            // Chart.js for Crypto Nexus
-            const ctx = document.getElementById('bitcoinChart').getContext('2d');
-            const bitcoinChart = new Chart(ctx, {
+            // 4. CHART.JS
+            const ctx = document.getElementById('btcChart').getContext('2d');
+            new Chart(ctx, {
                 type: 'line',
                 data: {
-                    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul'],
+                    labels: ['01:00', '02:00', '03:00', '04:00', '05:00', '06:00'],
                     datasets: [{
-                        label: 'Bitcoin Price (USD)',
-                        data: [40000, 42000, 38000, 45000, 50000, 48000, 52000],
-                        borderColor: var(--neon-cyan),
-                        backgroundColor: 'rgba(0, 255, 255, 0.2)',
+                        label: 'BTC/KRW Trend',
+                        data: [10100, 10150, 10080, 10230, 10190, 10210],
+                        borderColor: '#00f2ff',
+                        backgroundColor: 'rgba(0, 242, 255, 0.1)',
                         borderWidth: 2,
-                        pointBackgroundColor: var(--neon-cyan),
+                        pointRadius: 3,
                         tension: 0.4,
                         fill: true
                     }]
@@ -553,33 +510,10 @@
                     responsive: true,
                     maintainAspectRatio: false,
                     scales: {
-                        x: {
-                            grid: {
-                                color: 'rgba(0, 255, 255, 0.1)'
-                            },
-                            ticks: {
-                                color: var(--text-color)
-                            }
-                        },
-                        y: {
-                            grid: {
-                                color: 'rgba(0, 255, 255, 0.1)'
-                            },
-                            ticks: {
-                                color: var(--text-color),
-                                callback: function(value) {
-                                    return '$' + value.toLocaleString();
-                                }
-                            }
-                        }
+                        y: { grid: { color: 'rgba(255,255,255,0.1)' }, ticks: { color: '#E0FFFF' } },
+                        x: { grid: { display: false }, ticks: { color: '#E0FFFF' } }
                     },
-                    plugins: {
-                        legend: {
-                            labels: {
-                                color: var(--text-color)
-                            }
-                        }
-                    }
+                    plugins: { legend: { display: false } }
                 }
             });
         });
