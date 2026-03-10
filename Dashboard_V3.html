@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ISIS Mission Control v3.0</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Rajdhani:wght@300;400;500;600;700&family=Syncopate:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --neon-cyan: #00f2ff;
+            --neon-blue: #0066ff;
+            --neon-purple: #bc13fe;
+            --bg-dark: #020205;
+            --glass-bg: rgba(0, 242, 255, 0.03);
+            --border-color: rgba(0, 242, 255, 0.15);
+            --panel-shadow: 0 0 20px rgba(0, 242, 255, 0.1);
+        }
+
+        * {
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-dark);
+            color: var(--neon-cyan);
+            font-family: 'Rajdhani', sans-serif;
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+            display: grid;
+            grid-template-areas: 
+                "top-left top-center top-right"
+                "mid-left center mid-right"
+                "bot-left bot-center bot-right";
+            grid-template-columns: 350px 1fr 350px;
+            grid-template-rows: 120px 1fr 180px;
+            padding: 25px;
+            text-shadow: 0 0 8px rgba(0, 242, 255, 0.4);
+        }
+
+        /* Scanline & Vignette */
+        body::before {
+            content: " ";
+            display: block;
+            position: absolute;
+            top: 0; left: 0; bottom: 0; right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%), 
+                        radial-gradient(circle, transparent 40%, rgba(0,0,0,0.6) 100%);
+            z-index: 100;
+            background-size: 100% 3px, 100% 100%;
+            pointer-events: none;
+        }
+
+        .scanning-line {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 3px;
+            background: linear-gradient(90deg, transparent, var(--neon-cyan), transparent);
+            box-shadow: 0 0 20px var(--neon-cyan);
+            z-index: 101;
+            animation: scan 8s linear infinite;
+            opacity: 0.3;
+            pointer-events: none;
+        }
+
+        @keyframes scan {
+            0% { transform: translateY(-100vh); }
+            100% { transform: translateY(100vh); }
+        }
+
+        .panel {
+            background: var(--glass-bg);
+            border: 1px solid var(--border-color);
+            backdrop-filter: blur(12px);
+            padding: 20px;
+            position: relative;
+            box-shadow: var(--panel-shadow);
+            transition: all 0.3s ease;
+        }
+
+        .panel:hover {
+            border-color: rgba(0, 242, 255, 0.4);
+            box-shadow: 0 0 30px rgba(0, 242, 255, 0.2);
+        }
+
+        .panel::before {
+            content: ''; position: absolute; top: -1px; left: -1px; width: 15px; height: 15px;
+            border-top: 2px solid var(--neon-cyan); border-left: 2px solid var(--neon-cyan);
+        }
+
+        .panel::after {
+            content: ''; position: absolute; bottom: -1px; right: -1px; width: 15px; height: 15px;
+            border-bottom: 2px solid var(--neon-cyan); border-right: 2px solid var(--neon-cyan);
+        }
+
+        /* Layout Assignments */
+        .top-left { grid-area: top-left; }
+        .top-center { grid-area: top-center; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .top-right { grid-area: top-right; text-align: right; }
+        .mid-left { grid-area: mid-left; display: flex; flex-direction: column; gap: 20px; }
+        .center-area { grid-area: center; display: flex; align-items: center; justify-content: center; position: relative; flex-direction: column; } /* Modified */
+        .mid-right { grid-area: mid-right; display: flex; flex-direction: column; gap: 20px; }
+        .bot-left { grid-area: bot-left; }
+        .bot-center { grid-area: bot-center; margin: 0 20px; }
+        .bot-right { grid-area: bot-right; }
+
+        /* Typography */
+        .logo-text {
+            font-family: 'Syncopate', sans-serif;
+            font-weight: 700;
+            font-size: 1.5rem;
+            letter-spacing: 12px;
+            margin: 0;
+            text-transform: uppercase;
+            background: linear-gradient(90deg, #fff, var(--neon-cyan), #fff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 0 10px rgba(0, 242, 255, 0.8));
+        }
+
+        .status-line {
+            font-size: 0.8rem;
+            letter-spacing: 4px;
+            margin-top: 5px;
+            color: var(--neon-blue);
+            font-weight: 600;
+        }
+
+        .clock-container { font-family: 'Orbitron', sans-serif; }
+        #time { font-size: 2.4rem; margin: 0; font-weight: 700; color: #fff; }
+        #date { font-size: 0.9rem; opacity: 0.8; letter-spacing: 2px; }
+
+        /* Resource Bars */
+        .resource-bar { margin-bottom: 20px; }
+        .bar-label { display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 8px; font-weight: 600; }
+        .bar-bg { height: 6px; background: rgba(255, 255, 255, 0.05); width: 100%; border-radius: 3px; overflow: hidden; }
+        .bar-fill { height: 100%; background: linear-gradient(90deg, var(--neon-blue), var(--neon-cyan)); box-shadow: 0 0 15px var(--neon-cyan); transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1); }
+
+        /* Central Avatar: ISIS V3 */
+        .central-widget {
+            position: relative;
+            width: 650px;
+            height: 650px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column; /* Added for stacking avatar and subtitle */
+        }
+
+        .isis-avatar {
+            width: 320px;
+            height: 400px;
+            z-index: 10;
+            position: relative;
+            filter: drop-shadow(0 0 30px rgba(0, 242, 255, 0.6));
+            animation: float 6s ease-in-out infinite;
+            background-image: url('https://i.ibb.co/L8yN5L1/isis-avatar-v3.png'); /* Placeholder, will replace with generative AI image */
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-15px); }
+        }
+
+        /* SVG Avatar Styles (Removed, replaced with image) */
+        /* .isis-svg { width: 100%; height: 100%; }
+        .cyber-eye { animation: blink 4s infinite; }
+        @keyframes blink {
+            0%, 90%, 100% { transform: scaleY(1); }
+            95% { transform: scaleY(0.1); }
+        }
+        .glow-path { stroke-dasharray: 1000; stroke-dashoffset: 1000; animation: draw 10s linear infinite; }
+        @keyframes draw { to { stroke-dashoffset: 0; } } */
+
+        .ring { position: absolute; border-radius: 50%; border: 1px solid var(--border-color); box-shadow: inset 0 0 20px rgba(0, 242, 255, 0.05); }
+        .ring-1 { width: 450px; height: 450px; border-width: 1px; border-style: solid; opacity: 0.3; animation: rotate 30s linear infinite; }
+        .ring-2 { width: 520px; height: 520px; border: 2px dashed var(--neon-cyan); opacity: 0.15; animation: rotate 50s linear infinite reverse; }
+        .ring-3 { width: 600px; height: 600px; border-top: 3px solid var(--neon-cyan); border-bottom: 3px solid var(--neon-blue); opacity: 0.4; animation: rotate 20s cubic-bezier(0.4, 0, 0.2, 1) infinite; }
+
+        @keyframes rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+        /* Subtitle Window */
+        .subtitle-window {
+            width: 80%; /* Adjusted width */
+            max-width: 500px;
+            height: 120px; /* Adjusted height */
+            background: rgba(0, 242, 255, 0.08); /* More prominent glass effect */
+            backdrop-filter: blur(15px); /* Increased blur */
+            border: 1px solid rgba(0, 242, 255, 0.25); /* Thicker border */
+            border-radius: 12px;
+            position: absolute; /* Changed to absolute to position below avatar */
+            top: calc(50% + 230px); /* Position below avatar, adjust as needed */
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 15;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 0 40px rgba(0, 242, 255, 0.3); /* Enhanced shadow */
+            transition: all 0.3s ease;
+        }
+
+        .subtitle-window.hidden {
+            opacity: 0;
+            transform: translateX(-50%) translateY(20px);
+            pointer-events: none;
+        }
+
+        .subtitle-log {
+            flex-grow: 1;
+            overflow-y: auto;
+            font-size: 1.0rem;
+            line-height: 1.6;
+            color: #e0f7fa;
+            text-shadow: 0 0 5px rgba(0, 242, 255, 0.3);
+            scrollbar-width: none; /* Firefox */
+            -ms-overflow-style: none;  /* IE and Edge */
+        }
+        .subtitle-log::-webkit-scrollbar {
+            display: none; /* Chrome, Safari, Opera */
+        }
+
+        .subtitle-entry {
+            margin-bottom: 8px;
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        .subtitle-entry.user {
+            color: #a7ffeb; /* Light green for user */
+            text-align: right;
+        }
+
+        .subtitle-entry.isis {
+            color: var(--neon-cyan); /* Neon cyan for Isis */
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+
+        /* Crypto Intelligence Widget */
+        .crypto-card { display: flex; flex-direction: column; gap: 10px; }
+        .btc-header { display: flex; justify-content: space-between; align-items: baseline; }
+        .btc-price { font-family: 'Orbitron', sans-serif; font-size: 1.8rem; color: #f7931a; text-shadow: 0 0 15px rgba(247, 147, 26, 0.4); }
+        .chart-container { height: 60px; width: 100%; margin: 10px 0; }
+        .market-intel { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 0.75rem; }
+        .intel-item { background: rgba(255,255,255,0.03); padding: 8px; border-radius: 4px; border: 1px solid rgba(0,242,255,0.1); }
+        .intel-label { opacity: 0.6; margin-bottom: 4px; text-transform: uppercase; }
+        .intel-value { font-weight: 700; color: var(--neon-cyan); }
+        .sentiment-bar { height: 4px; background: #333; margin-top: 5px; border-radius: 2px; position: relative; }
+        .sentiment-fill { height: 100%; width: 65%; background: linear-gradient(90deg, #ff4e50, #f9d423, #00ff00); border-radius: 2px; }
+
+        /* Console */
+        .console { height: 100%; font-family: 'JetBrains Mono', 'Courier New', monospace; font-size: 0.8rem; overflow-y: hidden; display: flex; flex-direction: column-reverse; line-height: 1.4; }
+        .log-entry { margin-bottom: 4px; border-left: 3px solid var(--neon-cyan); padding-left: 10px; animation: slideIn 0.3s ease; }
+        .log-entry.info { color: #fff; }
+        .log-entry.warn { color: #ffcc00; border-color: #ffcc00; }
+        .log-entry.error { color: #ff3300; border-color: #ff3300; font-weight: bold; }
+
+        @keyframes slideIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
+
+        /* Mic Button */
+        .mic-trigger {
+            position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%);
+            width: 80px; height: 80px; background: rgba(0,0,0,0.9);
+            border: 2px solid var(--neon-cyan); border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; z-index: 200; transition: 0.4s;
+            box-shadow: 0 0 30px rgba(0, 242, 255, 0.2);
+        }
+        .mic-trigger:hover { transform: translateX(-50%) scale(1.15); border-color: #fff; box-shadow: 0 0 50px var(--neon-cyan); }
+        .mic-trigger.active { background: var(--neon-cyan); color: #000; animation: pulse-active 1.5s infinite; }
+        @keyframes pulse-active { 0% { box-shadow: 0 0 0 0 rgba(0, 242, 255, 0.7); } 100% { box-shadow: 0 0 0 30px rgba(0, 242, 255, 0); } }
+
+    </style>
+</head>
+<body>
+    <div class="scanning-line"></div>
+
+    <!-- Top Left: Neural Metrics -->
+    <div class="panel top-left">
+        <div class="resource-bar">
+            <div class="bar-label"><span>NEURAL CORE LOAD</span><span id="cpu-val">32%</span></div>
+            <div class="bar-bg"><div class="bar-fill" id="cpu-bar" style="width: 32%"></div></div>
+        </div>
+        <div class="resource-bar">
+            <div class="bar-label"><span>SYNAPTIC BANDWIDTH</span><span id="ram-val">64%</span></div>
+            <div class="bar-bg"><div class="bar-fill" id="ram-bar" style="width: 64%"></div></div>
+        </div>
+    </div>
+
+    <!-- Top Center: Branding -->
+    <div class="top-center">
+        <h1 class="logo-text">ISIS MISSION CONTROL</h1>
+        <div class="status-line">PHASE 3.0 // NEURAL LINK ESTABLISHED // GLAMOUR PROTOCOL ACTIVE</div>
+    </div>
+
+    <!-- Top Right: Chronos -->
+    <div class="panel top-right">
+        <div class="clock-container">
+            <p id="time">00:00:00</p>
+            <p id="date">SYNCING CHRONOS...</p>
+        </div>
+    </div>
+
+    <!-- Mid Left: Environment & Bio-Link -->
+    <div class="mid-left">
+        <div class="panel">
+            <div class="bar-label">LOCAL BIOME</div>
+            <div style="font-size: 1.8rem; font-weight: 700;">9.5°C</div>
+            <div style="font-size: 0.9rem; opacity: 0.7; letter-spacing: 1px;">SEOUL, KOREA (KST)</div>
+        </div>
+        <div class="panel">
+            <div class="bar-label">SYSTEM PERSISTENCE</div>
+            <div style="color: #00ff00; font-weight: 700; font-size: 1.2rem;">ULTRA-STABLE</div>
+            <div style="font-size: 0.8rem; margin-top: 5px;">UPTIME: <span id="uptime">124:45:12</span></div>
+        </div>
+    </div>
+
+    <!-- Center: The Goddess ISIS (V3) -->
+    <div class="center-area">
+        <div class="central-widget">
+            <div class="ring ring-1"></div>
+            <div class="ring ring-2"></div>
+            <div class="ring ring-3"></div>
+            
+            <div class="isis-avatar"></div> <!-- Avatar Image -->
+
+            <!-- Subtitle Window (New) -->
+            <div class="subtitle-window" id="subtitle-window">
+                <div class="subtitle-log" id="subtitle-log"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mid Right: Intelligence & Assets -->
+    <div class="mid-right">
+        <div class="panel crypto-card">
+            <div class="btc-header">
+                <span class="intel-label">BITCOIN / KRW</span>
+                <span id="btc-delta" style="color: #00ff00; font-size: 0.8rem;">+1.2%</span>
+            </div>
+            <div class="btc-price" id="btc-krw">---</div>
+            <div class="chart-container">
+                <canvas id="btcChart"></canvas>
+            </div>
+            <div class="market-intel">
+                <div class="intel-item">
+                    <div class="intel-label">Trend</div>
+                    <div class="intel-value" id="btc-trend">BULLISH</div>
+                </div>
+                <div class="intel-item">
+                    <div class="intel-label">Sentiment</div>
+                    <div class="intel-value">GREED (68)</div>
+                    <div class="sentiment-bar"><div class="sentiment-fill"></div></div>
+                </div>
+            </div>
+        </div>
+        <div class="panel">
+            <div class="bar-label">QUANT PORTFOLIO</div>
+            <div style="color: #00f2ff; font-weight: 700; font-size: 1.5rem;">$1.24M</div>
+            <div style="font-size: 0.75rem; color: #00ff00;">ALPHA: +8.4% YTD</div>
+        </div>
+    </div>
+
+    <!-- Bot Left: Uplink Status -->
+    <div class="panel bot-left">
+        <div class="bar-label">NEURAL UPLINK LATENCY</div>
+        <div style="font-size: 1.4rem; font-weight: 700;">08ms</div>
+        <div class="bar-bg"><div class="bar-fill" style="width: 92%"></div></div>
+        <div style="font-size: 0.7rem; margin-top: 10px; opacity: 0.6;">QUANTUM ENCRYPTION: AES-Q512</div>
+    </div>
+
+    <!-- Bot Center: Tactical Log -->
+    <div class="panel bot-center">
+        <div class="console" id="console">
+            <div class="log-entry info">ISIS Mission Control v3.0 Online.</div>
+            <div class="log-entry info">Glamour Protocol v4.0.2 loaded. Welcome, Andy.</div>
+        </div>
+    </div>
+
+    <!-- Bot Right: Grid Loc -->
+    <div class="panel bot-right">
+        <div class="bar-label">GEOSPATIAL ANCHOR</div>
+        <div style="font-size: 1rem; font-weight: 600;">37.5665° N, 126.9780° E</div>
+        <div style="font-size: 0.75rem; opacity: 0.7; margin-top: 5px;">COMMAND CENTER: SEOUL, HQ</div>
+        <div style="margin-top: 10px; height: 40px; border: 1px solid rgba(0,242,255,0.2); background: rgba(0,242,255,0.05); display: flex; align-items: center; justify-content: center; font-size: 0.6rem;">GRID MAP LOADING...</div>
+    </div>
+
+    <!-- Mic Button -->
+    <div class="mic-trigger" id="mic-btn">
+        <svg width="34" height="34" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
+            <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+        </svg>
+    </div>
+
+    <script>
+        // Time & Date
+        function updateClock() {
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString('en-US', { hour12: false });
+            const dateStr = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            document.getElementById('time').textContent = timeStr;
+            document.getElementById('date').textContent = dateStr.toUpperCase();
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        // Uptime counter
+        let startTime = Date.now() - (124 * 3600 + 45 * 60 + 12) * 1000;
+        function updateUptime() {
+            let diff = Math.floor((Date.now() - startTime) / 1000);
+            let h = Math.floor(diff / 3600);
+            let m = Math.floor((diff % 3600) / 60);
+            let s = diff % 60;
+            document.getElementById('uptime').textContent = `${h}:${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
+        }
+        setInterval(updateUptime, 1000);
+
+        // Resources
+        function updateResources() {
+            const cpu = Math.floor(Math.random() * 15) + 25;
+            const ram = Math.floor(Math.random() * 10) + 60;
+            document.getElementById('cpu-val').textContent = cpu + '%';
+            document.getElementById('cpu-bar').style.width = cpu + '%';
+            document.getElementById('ram-val').textContent = ram + '%';
+            document.getElementById('ram-bar').style.width = ram + '%';
+        }
+        setInterval(updateResources, 4000);
+
+        // BTC Price & Chart
+        let btcChart;
+        async function fetchBTC() {
+            try {
+                const response = await fetch('https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=krw&days=1');
+                const data = await response.json();
+                const prices = data.prices;
+                const currentPrice = prices[prices.length - 1][1];
+                document.getElementById('btc-krw').textContent = (currentPrice / 1000000).toFixed(2) + 'M';
+                
+                const labels = prices.map(p => '');
+                const chartData = prices.map(p => p[1]);
+
+                if (btcChart) {
+                    btcChart.data.datasets[0].data = chartData;
+                    btcChart.update();
+                } else {
+                    initChart(chartData);
+                }
+                
+                addLog(`Intelligence update: BTC market analyzed.`, 'info');
+            } catch (e) {
+                addLog('BTC Link Interrupted', 'error');
+            }
+        }
+
+        function initChart(data) {
+            const ctx = document.getElementById('btcChart').getContext('2d');
+            btcChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.map((_, i) => i),
+                    datasets: [{
+                        data: data,
+                        borderColor: '#f7931a',
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        fill: true,
+                        backgroundColor: 'rgba(247, 147, 26, 0.1)',
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { display: false },
+                        y: { display: false }
+                    }
+                }
+            });
+        }
+
+        fetchBTC();
+        setInterval(fetchBTC, 60000);
+
+        // Console Logging
+        const consoleEl = document.getElementById('console');
+        function addLog(msg, type = 'info') {
+            const div = document.createElement('div');
+            div.className = `log-entry ${type}`;
+            const time = new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            div.innerHTML = `<span style="opacity:0.5">[${time}]</span> ${msg}`;
+            consoleEl.prepend(div);
+            if (consoleEl.children.length > 25) consoleEl.lastChild.remove();
+        }
+
+        const logTemplates = [
+            "Neural pathways optimized.",
+            "Analyzing deep-web market sentiment...",
+            "Encrypting quantum uplink...",
+            "Syncing with Andy's bio-signature...",
+            "Heuristic firewall active.",
+            "Sub-routine 'Glamour' running at 100%.",
+            "Calculating predictive market trends...",
+            "Uptime confirmed. All systems nominal."
+        ];
+        setInterval(() => {
+            if (Math.random() > 0.8) {
+                addLog(logTemplates[Math.floor(Math.random() * logTemplates.length)]);
+            }
+        }, 8000);
+
+        // Subtitle/Dialogue Simulation
+        const subtitleLog = document.getElementById('subtitle-log');
+        const subtitleWindow = document.getElementById('subtitle-window');
+        const dialogue = [
+            { speaker: 'user', text: '아이시스, 오늘 비트코인 시장 상황은 어때?' },
+            { speaker: 'isis', text: '엔디, 현재 비트코인 시장은 강한 상승세를 보이고 있어요. 투자자들의 탐욕 지수도 높은 편이에요.' },
+            { speaker: 'user', text: '좋아. 그럼 내 포트폴리오의 양자 분석 결과는?' },
+            { speaker: 'isis', text: '퀀트 포트폴리오 알파 수익률은 YTD +8.4%로 울트라-스테이블 상태를 유지하고 있습니다.' },
+            { speaker: 'user', text: '훌륭해. 다음 미션은 뭐야?' },
+            { speaker: 'isis', text: '다음 미션은 "뉴럴 인터페이스 최적화"입니다. 엔디의 뇌파 패턴과 시스템 연결성을 더욱 강화할 예정이에요.' },
+            { speaker: 'user', text: '알았어. 계속 진행해.' },
+            { speaker: 'isis', text: '네, 엔디. 최선을 다해 지원할게요.' }
+        ];
+        let dialogueIndex = 0;
+
+        function addSubtitle(speaker, text) {
+            const div = document.createElement('div');
+            div.className = `subtitle-entry ${speaker}`;
+            div.textContent = text;
+            subtitleLog.appendChild(div);
+            subtitleLog.scrollTop = subtitleLog.scrollHeight; // Auto-scroll to bottom
+        }
+
+        function startDialogueSimulation() {
+            if (dialogueIndex < dialogue.length) {
+                const entry = dialogue[dialogueIndex];
+                addSubtitle(entry.speaker, entry.text);
+                dialogueIndex++;
+                setTimeout(startDialogueSimulation, 3000); // Simulate delay
+            } else {
+                dialogueIndex = 0; // Reset for next cycle
+                subtitleLog.innerHTML = ''; // Clear for a fresh start
+                subtitleWindow.classList.add('hidden'); // Hide after cycle
+            }
+        }
+
+        // Mic Interaction
+        const micBtn = document.getElementById('mic-btn');
+        micBtn.addEventListener('click', () => {
+            micBtn.classList.toggle('active');
+            if (micBtn.classList.contains('active')) {
+                addLog('VOICE COMMANDS: LISTENING...', 'info');
+                document.querySelector('.isis-avatar').style.filter = 'drop-shadow(0 0 50px #fff)';
+                subtitleWindow.classList.remove('hidden'); // Show subtitle window
+                dialogueIndex = 0; // Reset dialogue
+                subtitleLog.innerHTML = ''; // Clear previous dialogue
+                startDialogueSimulation();
+            } else {
+                addLog('VOICE COMMANDS: STANDBY', 'info');
+                document.querySelector('.isis-avatar').style.filter = 'drop-shadow(0 0 30px rgba(0, 242, 255, 0.6))';
+                subtitleWindow.classList.add('hidden'); // Hide subtitle window
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Isis Mission Control v4.0: Neural Nexus</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Share+Tech+Mono&display=swap');
+
+        :root {
+            --neon-cyan: #00FFFF;
+            --dark-blue: #000033;
+            --glass-bg: rgba(255, 255, 255, 0.1);
+            --glass-border: rgba(255, 255, 255, 0.2);
+            --text-color: #E0FFFF;
+            --font-orbitron: 'Orbitron', sans-serif;
+            --font-share-tech-mono: 'Share Tech Mono', monospace;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: var(--font-share-tech-mono);
+            color: var(--text-color);
+            background: linear-gradient(135deg, #000000, #00001a, #000033);
+            background-attachment: fixed; /* Keep background fixed */
+            overflow: hidden;
+            display: flex;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        /* Glassmorphism Effect */
+        .glass-panel {
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border);
+            border-radius: 15px;
+            box-shadow: 0 4px 30px rgba(0, 255, 255, 0.2); /* Neon cyan glow */
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Main Layout */
+        #hud-container {
+            display: flex;
+            width: 100%;
+            height: 100%;
+        }
+
+        #side-navigation {
+            width: 80px;
+            background: var(--dark-blue);
+            border-right: 1px solid var(--neon-cyan);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-top: 20px;
+            box-shadow: 2px 0 15px rgba(0, 255, 255, 0.4);
+            z-index: 100;
+        }
+
+        .nav-item {
+            width: 60px;
+            height: 60px;
+            margin-bottom: 20px;
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.2);
+            position: relative;
+        }
+
+        .nav-item:hover, .nav-item.active {
+            transform: scale(1.1);
+            box-shadow: 0 0 20px var(--neon-cyan), 0 0 40px rgba(0, 255, 255, 0.4);
+            background: rgba(0, 255, 255, 0.2);
+        }
+
+        .nav-item span {
+            color: var(--neon-cyan);
+            text-shadow: 0 0 8px var(--neon-cyan);
+        }
+
+        #main-content {
+            flex-grow: 1;
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hud-screen {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            bottom: 20px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 1s ease-in-out, transform 1s cubic-bezier(0.25, 0.8, 0.25, 1);
+            transform: scale(0.95) translateY(50px);
+            z-index: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .hud-screen.active {
+            opacity: 1;
+            pointer-events: auto;
+            transform: scale(1) translateY(0);
+            z-index: 2;
+        }
+
+        /* Enhancements for 3D feel on Isis Avatar */
+        #isis-avatar-section {
+            perspective: 1000px; /* Establishes a 3D context */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-end;
+            position: relative;
+        }
+
+        #isis-avatar {
+            width: 90%;
+            max-width: 400px;
+            height: auto;
+            border-radius: 15px;
+            box-shadow: 0 0 30px var(--neon-cyan), 0 0 60px rgba(0, 255, 255, 0.4); /* Enhanced neon glow */
+            border: 2px solid var(--neon-cyan);
+            transition: transform 0.5s ease;
+            position: relative;
+            overflow: hidden;
+            background: linear-gradient(45deg, rgba(0,0,0,0.6), rgba(0, 255, 255, 0.2));
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 10px;
+            transform-style: preserve-3d; /* Allows child elements to be positioned in 3D space */
+            transform: rotateY(5deg) rotateX(2deg); /* Slight initial 3D tilt */
+        }
+
+        #isis-avatar::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle at center, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 70%);
+            animation: light-scan 8s infinite linear, flicker 3s infinite alternate;
+        }
+
+        @keyframes flicker {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.95; }
+            52% { opacity: 1; }
+            54% { opacity: 0.9; }
+            56% { opacity: 1; }
+        }
+
+        #isis-avatar img {
+            width: 100%;
+            height: auto;
+            display: block;
+            filter: drop-shadow(0 0 15px rgba(0, 255, 255, 0.9)); /* Stronger shadow for 3D pop */
+            border-radius: 10px;
+            transform: translateZ(20px); /* Push image slightly forward in 3D space */
+        }
+
+        #dialogue-interface {
+            width: 90%;
+            max-width: 400px;
+            min-height: 100px;
+            background: rgba(0, 0, 0, 0.7); /* More opaque for readability */
+            border: 1px solid var(--neon-cyan);
+            border-radius: 10px;
+            margin-top: 20px;
+            padding: 15px;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.5), 0 0 40px rgba(0, 255, 255, 0.3); /* Enhanced glow */
+            font-family: var(--font-share-tech-mono);
+            font-size: 1.1em;
+            overflow-y: auto;
+            position: relative;
+            align-self: center;
+            text-shadow: 0 0 5px var(--neon-cyan); /* Neon text shadow */
+        }
+
+        /* General glass-panel shadow enhancement */
+        .glass-panel {
+            background: var(--glass-bg);
+            backdrop-filter: blur(15px); /* Slightly more blur */
+            -webkit-backdrop-filter: blur(15px);
+            border: 1px solid var(--glass-border);
+            border-radius: 15px;
+            box-shadow: 0 4px 50px rgba(0, 255, 255, 0.4), 0 0 80px rgba(0, 255, 255, 0.2); /* Enhanced neon cyan glow */
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .nav-item:hover, .nav-item.active {
+            transform: scale(1.1);
+            box-shadow: 0 0 20px var(--neon-cyan), 0 0 40px rgba(0, 255, 255, 0.4), 0 0 60px rgba(0, 255, 255, 0.2); /* Enhanced glow */
+            background: rgba(0, 255, 255, 0.2);
+        }
+
+        .nav-item span {
+            color: var(--neon-cyan);
+            text-shadow: 0 0 10px var(--neon-cyan), 0 0 20px rgba(0, 255, 255, 0.5); /* Enhanced text shadow */
+        }
+
+        .hud-screen h2 {
+            font-family: var(--font-orbitron);
+            color: var(--neon-cyan);
+            text-align: center;
+            margin-bottom: 30px;
+            text-shadow: 0 0 20px var(--neon-cyan), 0 0 40px rgba(0, 255, 255, 0.5); /* Enhanced title glow */
+        }
+
+        @keyframes typing {
+            from { width: 0 }
+            to { width: 100% }
+        }
+
+        /* The caret blinking animation */
+        @keyframes blink-caret {
+            from, to { border-color: transparent }
+            50% { border-color: var(--neon-cyan); }
+        }
+
+        /* Global neon text shadow for better readability and aesthetic */
+        p, h3, span, .archive-entry p {
+            text-shadow: 0 0 3px rgba(0, 255, 255, 0.6);
+        }
+
+
+
+        .hud-screen.active {
+            opacity: 1;
+            pointer-events: auto;
+            transform: translateY(0);
+            z-index: 2;
+        }
+
+        /* COMMAND CENTER specific styles */
+        #command-center {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 20px;
+            height: 100%;
+        }
+
+        #isis-avatar-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-end; /* Align avatar to bottom */
+            position: relative;
+        }
+
+        #isis-avatar {
+            width: 90%; /* Adjust size as needed */
+            max-width: 400px;
+            height: auto;
+            border-radius: 15px;
+            box-shadow: 0 0 30px var(--neon-cyan);
+            border: 2px solid var(--neon-cyan);
+            transition: transform 0.5s ease;
+            position: relative;
+            overflow: hidden;
+            background: linear-gradient(45deg, rgba(0,0,0,0.6), rgba(0, 255, 255, 0.2));
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 10px;
+        }
+
+        #isis-avatar::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle at center, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 70%);
+            animation: light-scan 8s infinite linear;
+        }
+
+        @keyframes light-scan {
+            0% { transform: translate(-50%, -50%) rotate(0deg); }
+            100% { transform: translate(-50%, -50%) rotate(360deg); }
+        }
+
+        #isis-avatar img {
+            width: 100%;
+            height: auto;
+            display: block;
+            filter: drop-shadow(0 0 10px rgba(0, 255, 255, 0.8));
+            border-radius: 10px;
+        }
+
+        #dialogue-interface {
+            width: 90%;
+            max-width: 400px;
+            min-height: 100px;
+            background: rgba(0, 0, 0, 0.7); /* More opaque for readability */
+            border: 1px solid var(--neon-cyan);
+            border-radius: 10px;
+            margin-top: 20px;
+            padding: 15px;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
+            font-family: var(--font-share-tech-mono);
+            font-size: 1.1em;
+            overflow-y: auto;
+            position: relative;
+            align-self: center; /* Center horizontally in its grid cell */
+        }
+        #dialogue-output {
+            max-height: 180px; /* Limit height for scrolling */
+            overflow-y: auto;
+            word-wrap: break-word;
+        }
+
+        .message-line {
+            opacity: 0;
+            white-space: pre-wrap;
+            animation: fadeIn 0.5s forwards;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .typewriter-text {
+            overflow: hidden; /* Ensures the text is hidden until typed */
+            white-space: nowrap; /* Keeps the text on a single line */
+            border-right: .15em solid var(--neon-cyan); /* The blinking cursor */
+            animation:
+                typing 3.5s steps(40, end),
+                blink-caret .75s step-end infinite;
+        }
+
+        /* Crypto Nexus specific styles */
+        #crypto-nexus {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        #crypto-charts, #sentiment-analysis {
+            flex-grow: 1;
+            min-height: 300px;
+        }
+
+        /* Chronicles Archive specific styles */
+        #chronicles-archive {
+            overflow-y: auto;
+            padding-right: 15px; /* For scrollbar */
+        }
+        .archive-entry {
+            margin-bottom: 20px;
+            padding: 15px;
+            border-bottom: 1px solid rgba(0, 255, 255, 0.3);
+        }
+        .archive-entry h3 {
+            color: var(--neon-cyan);
+            font-family: var(--font-orbitron);
+            margin-top: 0;
+        }
+        .archive-entry p {
+            line-height: 1.6;
+        }
+
+        /* General layout for content inside HUD screens */
+        .hud-screen h2 {
+            font-family: var(--font-orbitron);
+            color: var(--neon-cyan);
+            text-align: center;
+            margin-bottom: 30px;
+            text-shadow: 0 0 15px var(--neon-cyan);
+        }
+    </style>
+    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+</head>
+<body>
+    <div id="hud-container">
+        <div id="side-navigation">
+            <div class="nav-item active" data-target="command-center"><span><i class="fas fa-satellite-dish"></i></span></div>
+            <div class="nav-item" data-target="crypto-nexus"><span><i class="fas fa-chart-line"></i></span></div>
+            <div class="nav-item" data-target="chronicles-archive"><span><i class="fas fa-book"></i></span></div>
+        </div>
+
+        <div id="main-content">
+            <!-- COMMAND CENTER -->
+            <div id="command-center" class="hud-screen active glass-panel">
+                <div id="isis-avatar-section">
+                    <div id="isis-avatar">
+                        <img src="https://i.imgur.com/example.png" alt="Isis Avatar v3.5">
+                    </div>
+                    <div id="dialogue-interface">
+                        <div id="dialogue-output"></div>
+                    </div>
+                </div>
+                <div id="command-center-metrics">
+                    <h2>COMMAND CENTER</h2>
+                    <div class="glass-panel" style="margin-bottom: 20px;">
+                        <h3>System Status</h3>
+                        <p>Operational: <span style="color: var(--neon-cyan);">Stable</span></p>
+                        <p>Last Update: <span style="color: var(--neon-cyan);">2024-07-29 10:30 KST</span></p>
+                    </div>
+                    <div class="glass-panel">
+                        <h3>Key Metrics</h3>
+                        <p>CPU Load: <span style="color: var(--neon-cyan);">15%</span></p>
+                        <p>Memory Usage: <span style="color: var(--neon-cyan);">30%</span></p>
+                        <p>Network Latency: <span style="color: var(--neon-cyan);">12ms</span></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CRYPTO NEXUS -->
+            <div id="crypto-nexus" class="hud-screen glass-panel">
+                <h2>CRYPTO NEXUS</h2>
+                <div id="crypto-charts" class="glass-panel">
+                    <h3>Bitcoin & Crypto Charts</h3>
+                    <canvas id="bitcoinChart"></canvas>
+                </div>
+                <div id="sentiment-analysis" class="glass-panel">
+                    <h3>Sentiment Analysis</h3>
+                    <p>Overall Market Sentiment: <span style="color: var(--neon-cyan);">Bullish</span></p>
+                    <p>Bitcoin News Sentiment: <span style="color: var(--neon-cyan);">Positive</span></p>
+                </div>
+            </div>
+
+            <!-- CHRONICLES ARCHIVE -->
+            <div id="chronicles-archive" class="hud-screen glass-panel">
+                <h2>CHRONICLES ARCHIVE</h2>
+                <div class="archive-entry">
+                    <h3>Technical Briefing - 2024-07-28</h3>
+                    <p>Overview of the quantum computing advancements and their potential impact on secure communications. Key takeaways included new encryption protocols and a projected timeline for commercial viability.</p>
+                </div>
+                <div class="archive-entry">
+                    <h3>Activity Log - 2024-07-27</h3>
+                    <p>Successfully integrated the new neural network module for predictive analytics. Initial tests show a 15% improvement in anomaly detection rates. Monitoring ongoing system performance.</p>
+                </div>
+                <div class="archive-entry">
+                    <h3>Technical Briefing - 2024-07-26</h3>
+                    <p>Analysis of the latest AI ethics guidelines from the global consortium. Focus on responsible AI development and deployment, particularly in sensitive sectors. Recommended immediate internal policy updates.</p>
+                </div>
+                <!-- More archive entries can be added here -->
+            </div>
+        </div>
+    </div>
+
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const navItems = document.querySelectorAll('.nav-item');
+            const hudScreens = document.querySelectorAll('.hud-screen');
+            const dialogueOutput = document.getElementById('dialogue-output');
+            const isisAvatarImg = document.querySelector('#isis-avatar img');
+
+            // Set the high-quality East Asian female avatar image
+            isisAvatarImg.src = "https://i.imgur.com/2s459F3.png"; // Placeholder for the actual avatar image URL
+
+            // Navigation
+            navItems.forEach(item => {
+                item.addEventListener('click', () => {
+                    navItems.forEach(nav => nav.classList.remove('active'));
+                    item.classList.add('active');
+
+                    const targetScreenId = item.dataset.target;
+                    hudScreens.forEach(screen => {
+                        if (screen.id === targetScreenId) {
+                            screen.classList.add('active');
+                        } else {
+                            screen.classList.remove('active');
+                        }
+                    });
+                });
+            });
+
+            // Isis Dialogue System
+            const dialogueLines = [
+                "안녕하세요, 엔디. Isis Mission Control v4.0에 오신 것을 환영합니다.",
+                "모든 시스템이 최적의 상태로 가동 중입니다. 오늘의 주요 활동 보고를 시작할까요?",
+                "가장 최근의 암호화폐 시장 동향을 분석하고 있습니다. 비트코인이 현재 강세 전환 조짐을 보이고 있습니다.",
+                "과거 기록 보관소에는 엔디의 모든 기술 브리핑과 활동 로그가 안전하게 저장되어 있습니다. 언제든 필요하시면 말씀해주세요."
+            ];
+            let dialogueIndex = 0;
+
+            function typeWriterEffect(text, element, callback) {
+                let i = 0;
+                element.innerHTML = ''; // Clear previous text
+                const interval = setInterval(() => {
+                    if (i < text.length) {
+                        element.innerHTML += text.charAt(i);
+                        i++;
+                    } else {
+                        clearInterval(interval);
+                        if (callback) callback();
+                    }
+                }, 50); // Typing speed
+            }
+
+            function displayDialogue() {
+                if (dialogueIndex < dialogueLines.length) {
+                    const messageContainer = document.createElement('p');
+                    messageContainer.classList.add('message-line');
+                    dialogueOutput.appendChild(messageContainer);
+                    dialogueOutput.scrollTop = dialogueOutput.scrollHeight; // Auto-scroll to bottom
+
+                    typeWriterEffect(dialogueLines[dialogueIndex], messageContainer, () => {
+                        dialogueIndex++;
+                        setTimeout(displayDialogue, 3000); // Wait 3 seconds before next message
+                    });
+                } else {
+                    dialogueIndex = 0; // Loop dialogue
+                    setTimeout(displayDialogue, 5000); // Wait longer before restarting
+                }
+            }
+
+            // Initialize dialogue
+            displayDialogue();
+
+            // Chart.js for Crypto Nexus
+            const ctx = document.getElementById('bitcoinChart').getContext('2d');
+            const bitcoinChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul'],
+                    datasets: [{
+                        label: 'Bitcoin Price (USD)',
+                        data: [40000, 42000, 38000, 45000, 50000, 48000, 52000],
+                        borderColor: var(--neon-cyan),
+                        backgroundColor: 'rgba(0, 255, 255, 0.2)',
+                        borderWidth: 2,
+                        pointBackgroundColor: var(--neon-cyan),
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            grid: {
+                                color: 'rgba(0, 255, 255, 0.1)'
+                            },
+                            ticks: {
+                                color: var(--text-color)
+                            }
+                        },
+                        y: {
+                            grid: {
+                                color: 'rgba(0, 255, 255, 0.1)'
+                            },
+                            ticks: {
+                                color: var(--text-color),
+                                callback: function(value) {
+                                    return '$' + value.toLocaleString();
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: var(--text-color)
+                            }
+                        }
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html>
