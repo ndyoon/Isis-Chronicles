@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ISIS Mission Control v5.0 | The Living Intelligence</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Rajdhani:wght@300;400;500;600;700&family=Syncopate:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Three.js and Dependencies -->
+    <script async src="https://unpkg.com/es-module-shims@1.8.0/dist/es-module-shims.js"></script>
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.156.1/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.156.1/examples/jsm/",
+                "@pixiv/three-vrm": "https://unpkg.com/@pixiv/three-vrm@2.0.2/lib/three-vrm.module.js"
+            }
+        }
+    </script>
+    <style>
+        :root {
+            --neon-cyan: #00f2ff;
+            --neon-blue: #0066ff;
+            --neon-purple: #bc13fe;
+            --bg-dark: #020205;
+            --glass-bg: rgba(0, 242, 255, 0.03);
+            --border-color: rgba(0, 242, 255, 0.15);
+            --panel-shadow: 0 0 20px rgba(0, 242, 255, 0.1);
+            --text-glow: 0 0 10px rgba(0, 242, 255, 0.5);
+        }
+
+        * { box-sizing: border-box; user-select: none; }
+        body {
+            margin: 0; padding: 0;
+            background-color: var(--bg-dark);
+            color: var(--neon-cyan);
+            font-family: 'Rajdhani', sans-serif;
+            height: 100vh; width: 100vw;
+            overflow: hidden;
+            display: grid;
+            grid-template-areas: 
+                "top-left top-center top-right"
+                "mid-left center mid-right"
+                "bot-left bot-center bot-right";
+            grid-template-columns: 380px 1fr 380px;
+            grid-template-rows: 120px 1fr 200px;
+            padding: 20px;
+            text-shadow: var(--text-glow);
+        }
+
+        /* Scanline & Overlay */
+        body::before {
+            content: " "; display: block; position: absolute;
+            top: 0; left: 0; bottom: 0; right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%), 
+                        radial-gradient(circle, transparent 30%, rgba(0,0,0,0.7) 100%);
+            z-index: 100; background-size: 100% 3px, 100% 100%; pointer-events: none;
+        }
+
+        .scanning-line {
+            position: fixed; top: 0; left: 0; width: 100%; height: 2px;
+            background: linear-gradient(90deg, transparent, var(--neon-cyan), transparent);
+            box-shadow: 0 0 15px var(--neon-cyan);
+            z-index: 101; animation: scan 10s linear infinite; opacity: 0.2; pointer-events: none;
+        }
+        @keyframes scan { 0% { transform: translateY(-100vh); } 100% { transform: translateY(100vh); } }
+
+        .panel {
+            background: var(--glass-bg);
+            border: 1px solid var(--border-color);
+            backdrop-filter: blur(15px);
+            padding: 20px;
+            position: relative;
+            box-shadow: var(--panel-shadow);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .panel:hover { border-color: rgba(0, 242, 255, 0.5); box-shadow: 0 0 35px rgba(0, 242, 255, 0.25); }
+        .panel::before { content: ''; position: absolute; top: -1px; left: -1px; width: 20px; height: 20px; border-top: 2px solid var(--neon-cyan); border-left: 2px solid var(--neon-cyan); }
+        .panel::after { content: ''; position: absolute; bottom: -1px; right: -1px; width: 20px; height: 20px; border-bottom: 2px solid var(--neon-cyan); border-right: 2px solid var(--neon-cyan); }
+
+        /* Grid Assignments */
+        .top-left { grid-area: top-left; }
+        .top-center { grid-area: top-center; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .top-right { grid-area: top-right; text-align: right; }
+        .mid-left { grid-area: mid-left; display: flex; flex-direction: column; gap: 15px; }
+        .center-area { grid-area: center; position: relative; display: flex; align-items: center; justify-content: center; overflow: visible; }
+        .mid-right { grid-area: mid-right; display: flex; flex-direction: column; gap: 15px; }
+        .bot-left { grid-area: bot-left; }
+        .bot-center { grid-area: bot-center; margin: 0 15px; }
+        .bot-right { grid-area: bot-right; }
+
+        /* Typography */
+        .logo-text {
+            font-family: 'Syncopate', sans-serif; font-weight: 700; font-size: 1.8rem;
+            letter-spacing: 15px; margin: 0; text-transform: uppercase;
+            background: linear-gradient(90deg, #fff, var(--neon-cyan), #bc13fe);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 0 15px rgba(0, 242, 255, 0.8));
+        }
+        .status-line { font-size: 0.75rem; letter-spacing: 5px; margin-top: 8px; color: var(--neon-blue); font-weight: 600; text-transform: uppercase; }
+
+        /* 3D Container */
+        #avatar-container {
+            width: 100%; height: 100%;
+            position: absolute; top: 0; left: 0;
+            z-index: 1;
+        }
+
+        .avatar-overlay {
+            position: absolute; z-index: 2; pointer-events: none;
+            width: 100%; height: 100%;
+            display: flex; align-items: center; justify-content: center;
+        }
+
+        .central-rings {
+            position: absolute; width: 700px; height: 700px;
+            pointer-events: none; opacity: 0.4;
+        }
+        .ring {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            border-radius: 50%; border: 1px solid var(--neon-cyan);
+            box-shadow: 0 0 30px rgba(0, 242, 255, 0.1), inset 0 0 30px rgba(0, 242, 255, 0.1);
+        }
+        .ring-inner { width: 400px; height: 400px; border-style: dashed; animation: rotate 40s linear infinite; }
+        .ring-mid { width: 550px; height: 550px; border-width: 2px; border-top-color: transparent; animation: rotate 25s linear infinite reverse; }
+        .ring-outer { width: 700px; height: 700px; border-width: 1px; opacity: 0.2; animation: rotate 60s linear infinite; }
+
+        @keyframes rotate { from { transform: translate(-50%, -50%) rotate(0deg); } to { transform: translate(-50%, -50%) rotate(360deg); } }
+
+        /* Subtitles / Dialog */
+        .subtitle-box {
+            position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%);
+            width: 600px; min-height: 80px;
+            background: rgba(0, 0, 0, 0.7); border: 1px solid var(--neon-cyan);
+            backdrop-filter: blur(10px); padding: 15px 25px;
+            font-family: 'Rajdhani', sans-serif; font-size: 1.2rem; line-height: 1.5;
+            color: #fff; text-align: center; border-radius: 5px;
+            box-shadow: 0 0 30px rgba(0, 242, 255, 0.3); z-index: 10;
+            display: none; transition: all 0.3s;
+        }
+
+        /* Widgets */
+        .widget-title { font-size: 0.8rem; font-weight: 700; letter-spacing: 2px; color: var(--neon-blue); margin-bottom: 10px; display: flex; align-items: center; }
+        .widget-title::before { content: ''; width: 10px; height: 10px; background: var(--neon-cyan); display: inline-block; margin-right: 10px; clip-path: polygon(0 0, 100% 50%, 0 100%); }
+
+        .resource-bar { margin-bottom: 15px; }
+        .bar-info { display: flex; justify-content: space-between; font-size: 0.75rem; margin-bottom: 5px; }
+        .bar-track { height: 4px; background: rgba(255, 255, 255, 0.05); border-radius: 2px; overflow: hidden; }
+        .bar-fill { height: 100%; background: linear-gradient(90deg, var(--neon-blue), var(--neon-cyan)); width: 0%; transition: width 1s ease; }
+
+        /* Console */
+        .console { height: 100%; overflow-y: hidden; display: flex; flex-direction: column-reverse; font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; color: #fff; }
+        .log-entry { padding: 4px 0; border-bottom: 1px solid rgba(0, 242, 255, 0.05); animation: fadeIn 0.3s ease; }
+        .log-time { color: var(--neon-blue); margin-right: 10px; }
+        .log-msg { opacity: 0.9; }
+        .log-type-info { color: #fff; }
+        .log-type-sys { color: var(--neon-cyan); }
+
+        /* Mic Button */
+        .mic-btn {
+            position: fixed; bottom: 30px; right: 30px; width: 70px; height: 70px;
+            border-radius: 50%; background: rgba(0,0,0,0.8); border: 2px solid var(--neon-cyan);
+            display: flex; align-items: center; justify-content: center; cursor: pointer;
+            z-index: 200; transition: 0.3s; box-shadow: 0 0 20px rgba(0, 242, 255, 0.2);
+        }
+        .mic-btn:hover { transform: scale(1.1); box-shadow: 0 0 40px var(--neon-cyan); }
+        .mic-btn.active { background: var(--neon-cyan); color: #000; animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(0, 242, 255, 0.7); } 100% { box-shadow: 0 0 0 25px rgba(0, 242, 255, 0); } }
+
+        /* Loading Screen */
+        #loading-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000; z-index: 1000; display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+        }
+        .loader-ring {
+            width: 100px; height: 100px; border: 5px solid rgba(0, 242, 255, 0.1);
+            border-top: 5px solid var(--neon-cyan); border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .loading-text { margin-top: 20px; font-family: 'Orbitron', sans-serif; letter-spacing: 5px; color: var(--neon-cyan); }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+    <div id="loading-screen">
+        <div class="loader-ring"></div>
+        <div class="loading-text">INITIALIZING ISIS V5.0</div>
+    </div>
+
+    <div class="scanning-line"></div>
+
+    <!-- Top Left: Neural Core -->
+    <div class="panel top-left">
+        <div class="widget-title">NEURAL CORE ENGINE</div>
+        <div class="resource-bar">
+            <div class="bar-info"><span>SYNAPTIC LOAD</span><span id="syn-val">42%</span></div>
+            <div class="bar-track"><div class="bar-fill" id="syn-bar" style="width: 42%"></div></div>
+        </div>
+        <div class="resource-bar">
+            <div class="bar-info"><span>HEURISTIC DEPTH</span><span id="heu-val">88%</span></div>
+            <div class="bar-track"><div class="bar-fill" id="heu-bar" style="width: 88%"></div></div>
+        </div>
+    </div>
+
+    <!-- Top Center: Branding -->
+    <div class="top-center">
+        <h1 class="logo-text">ISIS MISSION CONTROL</h1>
+        <div class="status-line">V5.0 THE LIVING INTELLIGENCE // SPATIAL LINK ACTIVE</div>
+    </div>
+
+    <!-- Top Right: Chronos -->
+    <div class="panel top-right">
+        <div id="time" style="font-family: 'Orbitron', sans-serif; font-size: 2.2rem; font-weight: 700;">00:00:00</div>
+        <div id="date" style="font-size: 0.8rem; letter-spacing: 2px; opacity: 0.7;">MARCH 05, 2025</div>
+    </div>
+
+    <!-- Mid Left: Environmental Metrics -->
+    <div class="mid-left">
+        <div class="panel">
+            <div class="widget-title">LOCAL BIOME</div>
+            <div style="font-size: 1.8rem; font-weight: 700; color: #fff;">9.5°C</div>
+            <div style="font-size: 0.8rem; opacity: 0.6;">SEOUL, KOREA (KST)</div>
+        </div>
+        <div class="panel" style="flex: 1;">
+            <div class="widget-title">SYSTEM PERSISTENCE</div>
+            <div style="height: 100px; display: flex; align-items: center; justify-content: center;">
+                <canvas id="sysChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Center: The Avatar -->
+    <div class="center-area">
+        <div id="avatar-container"></div>
+        <div class="avatar-overlay">
+            <div class="central-rings">
+                <div class="ring ring-inner"></div>
+                <div class="ring ring-mid"></div>
+                <div class="ring ring-outer"></div>
+            </div>
+            <div class="subtitle-box" id="subtitle">
+                Welcome back, Andy. I've upgraded my neural architecture. How can I assist you today?
+            </div>
+        </div>
+    </div>
+
+    <!-- Mid Right: Market & Assets -->
+    <div class="mid-right">
+        <div class="panel">
+            <div class="widget-title">MARKET INTELLIGENCE</div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <span style="font-family: 'Orbitron'; color: #f7931a;">BTC/KRW</span>
+                <span style="color: #00ff00; font-size: 0.8rem;">+2.4%</span>
+            </div>
+            <div id="btc-price" style="font-size: 1.8rem; font-weight: 700; color: #fff;">132.4M</div>
+        </div>
+        <div class="panel" style="flex: 1;">
+            <div class="widget-title">QUANT ASSETS</div>
+            <div style="font-size: 1.5rem; font-weight: 700; color: var(--neon-cyan);">$1.24M</div>
+            <div style="font-size: 0.75rem; margin-top: 10px;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;"><span>EQUITY</span><span>70%</span></div>
+                <div style="display: flex; justify-content: space-between;"><span>STABLES</span><span>30%</span></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bot Left: Connection -->
+    <div class="panel bot-left">
+        <div class="widget-title">NEURAL UPLINK</div>
+        <div style="font-size: 1.2rem; font-weight: 700;">8ms <span style="font-size: 0.7rem; color: #00ff00; font-weight: 400;">ULTRA-LOW LATENCY</span></div>
+        <div style="font-size: 0.7rem; opacity: 0.5; margin-top: 5px;">ENC: QUANTUM-AES-512</div>
+    </div>
+
+    <!-- Bot Center: Tactical Log -->
+    <div class="panel bot-center">
+        <div class="console" id="log-container">
+            <!-- Logs will appear here -->
+        </div>
+    </div>
+
+    <!-- Bot Right: Geospatial -->
+    <div class="panel bot-right">
+        <div class="widget-title">GEOSPATIAL ANCHOR</div>
+        <div style="font-size: 0.9rem; font-weight: 600;">37.5665° N, 126.9780° E</div>
+        <div style="font-size: 0.7rem; opacity: 0.6;">COMMAND CENTER: SEOUL, HQ</div>
+    </div>
+
+    <!-- Mic Button -->
+    <div class="mic-btn" id="mic-btn">
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/>
+            <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+        </svg>
+    </div>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { VRMLoaderPlugin, VRMUtils } from '@pixiv/three-vrm';
+
+        // --- Configuration ---
+        const AVATAR_URL = 'https://pixiv.github.io/three-vrm/packages/three-vrm/examples/models/vrm/three-vrm-girl.vrm'; // Placeholder
+        // Note: For the actual ISIS V5, replace the URL above with the 38yo East Asian female model GLB/VRM.
+
+        let currentVrm = null;
+        let mixer = null;
+        let clock = new THREE.Clock();
+
+        // --- Three.js Setup ---
+        const container = document.getElementById('avatar-container');
+        const scene = new THREE.Scene();
+
+        const camera = new THREE.PerspectiveCamera(35, container.clientWidth / container.clientHeight, 0.1, 1000);
+        camera.position.set(0, 1.4, 3.0); // Focused on chest/head
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(container.clientWidth, container.clientHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.outputColorSpace = THREE.SRGBColorSpace;
+        container.appendChild(renderer.domElement);
+
+        // Lights
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+        scene.add(ambientLight);
+
+        const mainLight = new THREE.DirectionalLight(0x00f2ff, 2);
+        mainLight.position.set(2, 2, 5);
+        scene.add(mainLight);
+
+        const rimLight = new THREE.PointLight(0xbc13fe, 10, 10);
+        rimLight.position.set(-2, 1, -2);
+        scene.add(rimLight);
+
+        // Controls
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enablePan = false;
+        controls.enableZoom = false;
+        controls.target.set(0, 1.4, 0);
+        controls.update();
+
+        // --- Loader ---
+        const loader = new GLTFLoader();
+        loader.register((parser) => new VRMLoaderPlugin(parser));
+
+        loader.load(
+            AVATAR_URL,
+            (gltf) => {
+                const vrm = gltf.userData.vrm;
+                VRMUtils.removeUnusedMeshes(gltf.scene);
+                
+                // Rotate if needed (VRM is usually +Z)
+                vrm.scene.rotation.y = Math.PI;
+                scene.add(vrm.scene);
+                currentVrm = vrm;
+                
+                console.log('ISIS V5 Avatar Loaded', vrm);
+                document.getElementById('loading-screen').style.display = 'none';
+                addLog('Neural Avatar initialized. Living Protocol active.', 'sys');
+                
+                // Show initial greeting
+                setTimeout(() => {
+                    speak("Welcome back, Andy. My 3D neural core is fully synchronized. How shall we proceed today?", 4000);
+                }, 1000);
+            },
+            (progress) => {
+                const percent = Math.round((progress.loaded / progress.total) * 100);
+                document.querySelector('.loading-text').textContent = `UPLOADING NEURAL MAPPING: ${percent}%`;
+            },
+            (error) => {
+                console.error(error);
+                addLog('Avatar Sync Failed. Reverting to basic UI.', 'error');
+                document.getElementById('loading-screen').style.display = 'none';
+            }
+        );
+
+        // --- Animation & Logic ---
+        function animate() {
+            requestAnimationFrame(animate);
+            const delta = clock.getDelta();
+            const elapsed = clock.getElapsedTime();
+
+            if (currentVrm) {
+                // 1. Idle Movement (Breathing & Head Tilt)
+                const s = Math.sin(elapsed * 0.8);
+                const c = Math.cos(elapsed * 0.5);
+                
+                // Slight head tilt
+                if (currentVrm.humanoid) {
+                    const head = currentVrm.humanoid.getRawBoneNode('head');
+                    if (head) {
+                        head.rotation.y = s * 0.05;
+                        head.rotation.z = c * 0.03;
+                    }
+                    const spine = currentVrm.humanoid.getRawBoneNode('spine');
+                    if (spine) {
+                        spine.rotation.x = s * 0.02 + 0.05; // Gentle breathing motion
+                    }
+                }
+
+                // 2. Automatic Blinking
+                const blinkValue = Math.max(0, Math.sin(elapsed * 0.2) > 0.98 ? 1 : 0);
+                if (currentVrm.expressionManager) {
+                    currentVrm.expressionManager.setValue('blink', blinkValue);
+                }
+
+                // 3. Lip Sync (if speaking)
+                if (isSpeaking && currentVrm.expressionManager) {
+                    const mouthA = (Math.sin(elapsed * 15) * 0.5 + 0.5) * speakIntensity;
+                    currentVrm.expressionManager.setValue('aa', mouthA);
+                    currentVrm.expressionManager.setValue('ih', mouthA * 0.3);
+                }
+
+                currentVrm.update(delta);
+            }
+
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        // --- Interaction Functions ---
+        let isSpeaking = false;
+        let speakIntensity = 0;
+
+        function speak(text, duration) {
+            const subtitle = document.getElementById('subtitle');
+            subtitle.textContent = text;
+            subtitle.style.display = 'block';
+            isSpeaking = true;
+            speakIntensity = 1.0;
+            
+            addLog(`ISIS: ${text.substring(0, 30)}...`, 'info');
+
+            setTimeout(() => {
+                subtitle.style.display = 'none';
+                isSpeaking = false;
+                if (currentVrm && currentVrm.expressionManager) {
+                    currentVrm.expressionManager.setValue('aa', 0);
+                }
+            }, duration);
+        }
+
+        // --- UI Updates ---
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('time').textContent = now.toLocaleTimeString('en-US', { hour12: false });
+            document.getElementById('date').textContent = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }).toUpperCase();
+        }
+        setInterval(updateClock, 1000);
+
+        function updateResources() {
+            const syn = Math.floor(Math.random() * 20) + 30;
+            const heu = Math.floor(Math.random() * 10) + 85;
+            document.getElementById('syn-val').textContent = syn + '%';
+            document.getElementById('syn-bar').style.width = syn + '%';
+            document.getElementById('heu-val').textContent = heu + '%';
+            document.getElementById('heu-bar').style.width = heu + '%';
+        }
+        setInterval(updateResources, 3000);
+
+        function addLog(msg, type = 'info') {
+            const container = document.getElementById('log-container');
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-type-${type}`;
+            const time = new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            entry.innerHTML = `<span class="log-time">[${time}]</span><span class="log-msg">${msg}</span>`;
+            container.prepend(entry);
+            if (container.children.length > 15) container.lastChild.remove();
+        }
+
+        // Mic Button Interaction
+        const micBtn = document.getElementById('mic-btn');
+        micBtn.addEventListener('click', () => {
+            micBtn.classList.toggle('active');
+            if (micBtn.classList.contains('active')) {
+                addLog('VOICE INTERFACE: LISTENING...', 'sys');
+                // React to mic
+                if (currentVrm) {
+                    // Small visual reaction - glow?
+                }
+            } else {
+                addLog('VOICE INTERFACE: STANDBY', 'sys');
+                speak("I'm standing by, Andy.", 2000);
+            }
+        });
+
+        // Window Resize
+        window.addEventListener('resize', () => {
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        });
+
+        // System Chart (Dummy)
+        const ctx = document.getElementById('sysChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: Array(20).fill(''),
+                datasets: [{
+                    data: Array(20).fill(0).map(() => Math.random() * 100),
+                    borderColor: '#00f2ff',
+                    borderWidth: 2,
+                    pointRadius: 0,
+                    fill: true,
+                    backgroundColor: 'rgba(0, 242, 255, 0.1)',
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: { x: { display: false }, y: { display: false } }
+            }
+        });
+
+    </script>
+</body>
+</html>
